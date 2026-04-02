@@ -1,0 +1,73 @@
+# import dependencies
+from youtube_transcript_api import YouTubeTranscriptApi
+from openai import OpenAI
+import re 
+import faiss #extract most releavent features
+import numpy as np
+from config import OPENAI_API_KEY, EMBEDDING_MODEL, LLM_MODEL
+
+# Flow: transc -> split -> embed -> vector -> num array -> store in Faiss
+
+# 1. Initilizing OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Extracting youtube video ID (input Video URL and return videoId)
+def extract_video_id(url):
+    patterns = [
+        r"(?:v|\/)([0-9A-Za-z_-]{11}).*",
+        r"youtu\.be\/([0-9A-Za-z_-]{11})",
+        r"shorts\/([0-9A-Za-z_-]{11})"
+
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        # if we find a match
+        if match:
+            return match.group(1)
+        
+    return None
+
+# 2. Featching video Transcript (input videoId -> return Transcript)
+def get_transcript(video_id):
+    try:
+        # extract transcript
+        ytt_api = YouTubeTranscriptApi()
+        try:
+            # fetch english caption or transcript
+            transcript_data = ytt_api.fetch(video_id, languages=["en"])
+
+        except Exception:
+            # if english language is not found then provide next available language
+            transcript_list = ytt_api.list(video_id)
+            transcript_data = next(iter(transcript_list)).fetch()
+
+        full_text = " ".join(item.text for item in transcript_data) # join entire text of transcript including sub video
+        return re.sub(r"\s+", " ", full_text ) # remove extra space and return full text
+    
+    except Exception as e:
+        # If no transcript is found
+        print("transcript error: ", e)
+        return None
+    
+# 3 spliting transcript into chunks (input full transcript -> return splitted smaller chunks)
+def split_text(text, chunk_size = 150):
+    words = text.split()
+    return [
+        " ".join(words[i:i + chunk_size]) # ['hello', 'everyone'] -> 'hello everyone'
+        for i in range(0, len(words), chunk_size)
+    ]
+
+# 4. Creating Embeddings (input chunks -> return Embeddings vector)
+def create_embeddings(text_list):
+    response = client.embeddings.create(
+        model= EMBEDDING_MODEL,
+        input= text_list
+    )
+    return np.array([item.embedding for item in response.data]).astype("float32")
+
+# 5. Building FAISS Index (store embeddings in vector -> search)
+# Faiss - Fast similarity search on vectors
+def build_faiss_index(embeddings):
+    index = faiss.IndexFlatL2(embeddings.shape[1]) # created faiss index
+    index.add(embeddings) # adding embeddings to index
+    return index # return index
