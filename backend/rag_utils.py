@@ -71,8 +71,6 @@ def build_faiss_index(embeddings):
     index = faiss.IndexFlatL2(embeddings.shape[1]) # created faiss index
     index.add(embeddings) # adding embeddings to index
     return index # return index
-<<<<<<< HEAD
-=======
 
 # 6. Retrieve relevent chunks (search faiss index -> return most relevent chunks for a user query)
 # k = number of faiss similar, k= 3 -> provide top 3 similarities
@@ -112,4 +110,3 @@ def ask_llm(context, question):
         ]
     )
     return response.choices[0].message.content()
->>>>>>> backup-backend
