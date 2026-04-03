@@ -71,3 +71,42 @@ def build_faiss_index(embeddings):
     index = faiss.IndexFlatL2(embeddings.shape[1]) # created faiss index
     index.add(embeddings) # adding embeddings to index
     return index # return index
+
+# 6. Retrieve relevent chunks (search faiss index -> return most relevent chunks for a user query)
+# k = number of faiss similar, k= 3 -> provide top 3 similarities
+def retrieve_chunks(index, query_embedding, k=3):
+    ditances, indices = index.search(
+        np.array([query_embedding]).astype("float32"), k
+    )
+    return indices[0]
+
+# 7. Asking LLM (send retrieve text transcript content & user que -> LLM model)
+def ask_llm(context, question):
+    # Handle empty context
+    if not context.strip():
+        return "sorry, I couldn't find relevant info in video transcript"
+
+    # Truncate context
+    context = context[:6000]
+
+    prompt = f""" You are an AI assistent answering question about a YouTube video.
+    The transcript may be in any language (Kannada, Hindi, English, etc).
+    Always answer in English using provided context.
+    
+    Transcript Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer clearly in English: """
+
+    # callling llm api
+    response = client.chat.completions.create(
+        model= LLM_MODEL,
+        messages=[
+            {"role": "system", "content": "You answer question about YouTube videos."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    return response.choices[0].message.content()
