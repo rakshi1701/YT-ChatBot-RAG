@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube RAG Chatbot</title>
+</head>
+<body>
+
+    <h2>YouTube RAG Chatbot 🎥</h2>
+
+    <!-- Process Video -->
+    <h3>1. Process Video</h3>
+    <input type="text" id="videoUrl" placeholder="Enter YouTube URL" size="50">
+    <button onclick="processVideo()">Process</button>
+
+    <p id="processStatus"></p>
+
+    <!-- Ask Question -->
+    <h3>2. Ask Question</h3>
+    <input type="text" id="question" placeholder="Ask a question" size="50">
+    <button onclick="askQuestion()">Ask</button>
+
+    <p><b>Answer:</b></p>
+    <p id="answer"></p>
+
+    <script>
+        const API_BASE = "http://127.0.0.1:8000";
+
+        async function processVideo() {
+            const url = document.getElementById("videoUrl").value;
+
+            document.getElementById("processStatus").innerText = "Processing...";
+
+            try {
+                const response = await fetch(`${API_BASE}/process_video?url=${encodeURIComponent(url)}`, {
+                    method: "POST"
+                });
+
+                const data = await response.json();
+                document.getElementById("processStatus").innerText = data.message || data.error;
+
+            } catch (error) {
+                document.getElementById("processStatus").innerText = "Error processing video";
+                console.error(error);
+            }
+        }
+
+        async function askQuestion() {
+            const question = document.getElementById("question").value;
+
+            document.getElementById("answer").innerText = "Thinking...";
+
+            try {
+                const response = await fetch(`${API_BASE}/ask?question=${encodeURIComponent(question)}`, {
+                    method: "POST"
+                });
+
+                const data = await response.json();
+                document.getElementById("answer").innerText = data.answer || data.error;
+
+            } catch (error) {
+                document.getElementById("answer").innerText = "Error getting answer";
+                console.error(error);
+            }
+        }
+    </script>
+
+</body>
+</html>

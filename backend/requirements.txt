@@ -6,3 +6,6 @@ youtube-transcript-api # extraction of transcripts for youtube videos
 numpy
 python-dotenv # Safly load python api
 pydantic # check whether input and output data is correct
+torch 
+torchvision 
+torchaudio --index-url https://download.pytorch.org/whl/cu121
