@@ -64,7 +64,7 @@ YT-ChatBot-RAG/
 ### 1️⃣ Clone Repository
 
 ```bash
-git clone <your-repo-url>
+git clone git@github.com:rakshi1701/YT-ChatBot-RAG.git
 cd YT-ChatBot-RAG/backend
 ```
 
