@@ -12,7 +12,7 @@ app = FastAPI()
 # enable app using corsmiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origina = ["*"],
+    allow_origins = ["*"],
     allow_credentials = True, 
     allow_methods = ["*"],
     allow_headers = ['*']
@@ -21,7 +21,6 @@ app.add_middleware(
 # create to store processed video
 chunks = []
 index = None
-
 # 1. Create processed video endpoint
 @app.post("/process_video")
 def process_video(url: str):
@@ -65,7 +64,7 @@ def ask(question: str):
         context_chunks = []
         for i in top_chunks:
             if i < len(chunks):
-                context_chunks.append(chunks)
+                context_chunks.append(chunks[i])
         
         context = " ". join(context_chunks)
 
@@ -82,3 +81,4 @@ def ask(question: str):
     except Exception as e:
         print("Ask error: ", e)
         return {"error": str(e)}
+

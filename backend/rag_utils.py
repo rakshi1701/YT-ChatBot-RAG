@@ -5,6 +5,7 @@ import re
 import faiss #extract most releavent features
 import numpy as np
 from config import OPENAI_API_KEY, EMBEDDING_MODEL, LLM_MODEL
+from sentence_transformers import SentenceTransformer
 
 # Flow: transc -> split -> embed -> vector -> num array -> store in Faiss
 
@@ -58,55 +59,100 @@ def split_text(text, chunk_size = 150):
     ]
 
 # 4. Creating Embeddings (input chunks -> return Embeddings vector)
-def create_embeddings(text_list):
-    response = client.embeddings.create(
-        model= EMBEDDING_MODEL,
-        input= text_list
-    )
-    return np.array([item.embedding for item in response.data]).astype("float32")
+# def create_embeddings(text_list):
+#     response = client.embeddings.create(
+#         model= EMBEDDING_MODEL,
+#         input= text_list
+#     )
+#     return np.array([item.embedding for item in response.data]).astype("float32")
+
+model = SentenceTransformer(EMBEDDING_MODEL)
+def create_embeddings(texts):
+    if isinstance(texts, str):
+        texts = [texts]
+    return model.encode(texts, convert_to_numpy=True)
 
 # 5. Building FAISS Index (store embeddings in vector -> search)
 # Faiss - Fast similarity search on vectors
 def build_faiss_index(embeddings):
+    embeddings = embeddings.astype("float32")
     index = faiss.IndexFlatL2(embeddings.shape[1]) # created faiss index
     index.add(embeddings) # adding embeddings to index
     return index # return index
 
 # 6. Retrieve relevent chunks (search faiss index -> return most relevent chunks for a user query)
 # k = number of faiss similar, k= 3 -> provide top 3 similarities
+# def retrieve_chunks(index, query_embedding, k=3):
+#     ditances, indices = index.search(
+#         np.array([query_embedding]).astype("float32"), k
+#     )
+#     return indices[0]
+
 def retrieve_chunks(index, query_embedding, k=3):
-    ditances, indices = index.search(
-        np.array([query_embedding]).astype("float32"), k
-    )
+    query_embedding = np.array([query_embedding]).astype("float32")
+    distances, indices = index.search(query_embedding, k)
     return indices[0]
 
 # 7. Asking LLM (send retrieve text transcript content & user que -> LLM model)
-def ask_llm(context, question):
-    # Handle empty context
-    if not context.strip():
-        return "sorry, I couldn't find relevant info in video transcript"
+# def ask_llm(context, question):
+#     # Handle empty context
+#     if not context.strip():
+#         return "sorry, I couldn't find relevant info in video transcript"
 
-    # Truncate context
-    context = context[:6000]
+#     # Truncate context
+#     context = context[:6000]
 
-    prompt = f""" You are an AI assistent answering question about a YouTube video.
-    The transcript may be in any language (Kannada, Hindi, English, etc).
-    Always answer in English using provided context.
+#     prompt = f""" You are an AI assistent answering question about a YouTube video.
+#     The transcript may be in any language (Kannada, Hindi, English, etc).
+#     Always answer in English using provided context.
     
-    Transcript Context:
-    {context}
+#     Transcript Context:
+#     {context}
 
-    Question:
-    {question}
+#     Question:
+#     {question}
 
-    Answer clearly in English: """
+#     Answer clearly in English: """
 
-    # callling llm api
-    response = client.chat.completions.create(
-        model= LLM_MODEL,
-        messages=[
-            {"role": "system", "content": "You answer question about YouTube videos."},
-            {"role": "user", "content": prompt}
-        ]
+#     # callling llm api
+#     response = client.chat.completions.create(
+#         model= LLM_MODEL,
+#         messages=[
+#             {"role": "system", "content": "You answer question about YouTube videos."},
+#             {"role": "user", "content": prompt}
+#         ]
+#     )
+#     return response.choices[0].message.content()
+
+import requests
+
+# def ask_llm(context, question):
+#     prompt = f"Context: {context}\n\nQuestion: {question}"
+
+#     response = requests.post(
+#         "http://localhost:11434/api/generate",
+#         json={
+#             "model": "mistral",
+#             "prompt": prompt,
+#             "stream": False
+#         }
+#     )
+
+#     return response.json()["response"]
+
+def ask_llm(context, question):
+    prompt = f"Context: {context}\n\nQuestion: {question}"
+
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": "mistral",
+            "prompt": prompt,
+            "stream": False
+        }
     )
-    return response.choices[0].message.content()
+
+    if response.status_code != 200:
+        return "LLM error"
+
+    return response.json().get("response", "No response")
